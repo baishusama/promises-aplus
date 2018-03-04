@@ -24,19 +24,21 @@ function Promise(fn) {
             deferreds.push(deferred);
             return;
         }
-        var cb = state === 'fulfilled' ? deferred.onFulfilled : deferred.onRejected,
-            pass = state === 'fulfilled' ? deferred.resolve : deferred.reject,
-            ret;
-        if (!(cb && typeof cb === 'function')) {
-            pass(value);
-            return;
-        }
-        try {
-            ret = cb(value);
-            pass(ret); // TODO ???
-        } catch (e) {
-            deferred.reject(e);
-        }
+        setTimeout(function () { // instead of none -> Test Case: 2.2.4.js Line 68 & 154
+            var cb = state === 'fulfilled' ? deferred.onFulfilled : deferred.onRejected,
+                pass = state === 'fulfilled' ? deferred.resolve : deferred.reject,
+                ret;
+            if (!(cb && typeof cb === 'function')) {
+                pass(value);
+                return;
+            }
+            try {
+                ret = cb(value);
+                deferred.resolve(ret); // instead of `pass(ret);` -> Test Case: 2.2.6.js Line 191
+            } catch (e) {
+                deferred.reject(e);
+            }
+        }, 0);
     }
 
     function resolve(newValue) {
