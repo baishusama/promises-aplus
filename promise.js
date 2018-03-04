@@ -42,22 +42,20 @@ function Promise(fn) {
     }
 
     function resolve(newValue) {
-        setTimeout(function () {
-            if (newValue
-                && (typeof newValue === 'object'
-                    || typeof newValue === 'function')) {
-                var then = newValue.then;
-                if (typeof then === 'function') {
-                    then.call(newValue, resolve, reject);
-                    return;
-                }
+        if (newValue
+            && (typeof newValue === 'object'
+                || typeof newValue === 'function')) {
+            var then = newValue.then;
+            if (typeof then === 'function') {
+                then.call(newValue, resolve, reject);
+                return;
             }
-            if (state === 'pending') {
-                state = "fulfilled";
-                // value = newValue;
-                afterward(newValue);
-            }
-        }, 0);
+        }
+        if (state === 'pending') {
+            state = "fulfilled";
+            value = newValue;
+            afterward(newValue);
+        }
     }
 
     function reject(reason) {
@@ -70,23 +68,20 @@ function Promise(fn) {
                 return;
             }
         }*/
-        setTimeout(function () {
-            if (state === 'pending') {
-                state = 'rejected';
-                // value = reason;
-                afterward(reason);
-            }
-        }, 0);
+        if (state === 'pending') {
+            state = 'rejected';
+            value = reason;
+            afterward(reason);
+        }
     }
 
-    function afterward(v) {
-        value = v;
+    function afterward() {
         // 包在定时器内部：以避免 fn 同步导致 resolve 在 then 之前
-        // setTimeout(function () {
-        deferreds.forEach(function (deferred) {
-            handle(deferred);
-        });
-        // }, 0);
+        setTimeout(function () {
+            deferreds.forEach(function (deferred) {
+                handle(deferred);
+            });
+        }, 0);
     }
 
     fn(resolve, reject);
