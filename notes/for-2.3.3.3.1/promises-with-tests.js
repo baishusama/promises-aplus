@@ -62,14 +62,16 @@ function Promise(fn) {
                      * Note: the line below will not work for `resolve` wrapping in a `setTimeout` in this example
                      * in which case will throw to `window`, where there is no `catch`
                      */
-                    // throw(e);
+                    // throw(e); // x
                     /**
                      * Note: using `this.reject` to call reject is another choice
                      * but needs line 56 to be `then.call(newValue, resolve.bind(this), reject.bind(this));`
                      * for `resolve` wrapping in a `setTimeout` if without `bind` its `this` will point to `window`.
+                     * 注意！！Promise/A+ 中规定，onFulfilled 和 onRejected 必须没有 this 值。
+                     * 所以这里的 56 行的代码不能写成上述注释中所提到的，所以这里能且只能是 reject(e) 。
                      */
-                    // this.reject(e);
-                    reject(e);
+                    // this.reject(e); // x
+                    reject(e); // v
                 }
                 return;
             }
