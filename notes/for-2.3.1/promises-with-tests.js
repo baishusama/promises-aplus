@@ -9,14 +9,23 @@ function Promise(fn) {
     this.reject = reject;
 
     this.then = function (onFulfilled, onRejected) {
-        return new Promise(function (resolve, reject) {
+        var notPromiseVariable = '测试词法作用域：成功！';
+        /*var anotherIrrelevantPromiseVariable = new Promise(function(resolve, reject){
+          console.log('└─ AnotherIrrelevantPromiseVariable initing..');
+        });*/
+        var that = new Promise(function (resolve, reject) {
+            console.log('├─ Promise initing .. notPromiseVariable is', notPromiseVariable);
+            console.log('├─ Promise initing .. that is', that);
+            console.log('└─ Promise initing .. this is', this);
             handle({
-                onFulfilled: onFulfilled, // TODO: || ???
+                onFulfilled: onFulfilled,
                 onRejected: onRejected,
                 resolve: resolve.bind(this),
                 reject: reject.bind(this)
             });
         });
+        console.log('After initialization that is', that);
+        return that;
     };
 
     function handle(deferred) {
@@ -44,6 +53,7 @@ function Promise(fn) {
     function resolve(newValue) {
         // Needs to avoid recusive calls on promise
         if (newValue === this) {
+            console.log('---> The value passing into resolve is the current promise !!');
             throw new TypeError('recusive promise');
         }
         if (newValue
@@ -88,83 +98,48 @@ function Promise(fn) {
         }, 0);
     }
 
-    fn.call(this, resolve, reject); // about `this` -> Test Case: 2.3.1 -> notes/for-2.3.1
+    // TODO
+    console.log('In constructor, fn init with this :', this);
+    fn.call(this, resolve, reject);
 }
 
-/* Local Test */
-var getNameById = function (id) {
-    var fakeData = {
-        0: 'imo'
+/* adapter functions */
+var resolved = function (value) {
+    return new Promise(function (resolve) {
+        resolve(value);
+    });
+};
+var rejected = function (reason) {
+    return new Promise(function (resolve, reject) {
+        reject(reason);
+    });
+};
+var deferred = function () {
+    var promise = new Promise(function (resolve, reject) {
+    });
+    var fulfill = function (value) {
+        promise.resolve(value);
     };
-    return new Promise(function (resolve, reject) {
-        if (id in fakeData) {
-            setTimeout(resolve, 300, fakeData[id]);
-        } else {
-            setTimeout(reject, 300, '404');
-        }
-    });
+    var reject = function (err) {
+        promise.reject(err);
+    };
+    return {
+        promise: promise,
+        resolve: fulfill,
+        reject: reject
+    };
 };
-var getSomethingElse = function () {
-    return new Promise(function (resolve, reject) {
-        setTimeout(resolve, 600, 'emmmmm');
-    });
-};
-var getFin = function () {
-    return new Promise(function (resolve, reject) {
-        setTimeout(resolve, 900, 'Good Luck!');
-    });
-};
-// Success case
-/*getNameById(0).then(function (name) {
-    console.log('Name : ' + name);
-    return name;
-}, function (err) {
-    console.error('Err : ' + err);
-}).then(function (sth) {
-    console.log('Name again : ' + sth)
-}).then(function (nothing) {
-    console.log('Last `then` return nothing : ' + nothing);
-}).then(
-    getSomethingElse
-).then(function (sth) {
-    console.log('Sth else : ' + sth);
-}).then(
-    getFin
-).then(function (fin) {
-    console.log('Finally : ' + fin);
-});*/
-// Fail case
-/*getNameById(1).then(function (name) {
-    console.log('Name : ' + name);
-    return name;
-}, function (err) {
-    console.error('1. Err : ' + err);
-    return err;
-}).then(function (sth) {
-    console.log('Name again : ' + sth)
-}, function (err) {
-    console.error('2. Err : ' + err);
-    return err;
-}).then(function (nothing) {
-    console.log('Last `then` return nothing : ' + nothing);
-}, function (err) {
-    console.error('3. Err : ' + err);
-    return err;
-}).then(
-    getSomethingElse
-).then(function (sth) {
-    console.log('Sth else : ' + sth);
-}, function (err) {
-    console.error('4. Err : ' + err);
-    return err;
-}).then(
-    getFin
-).then(function (fin) {
-    console.log('Finally : ' + fin);
-}, function (err) {
-    console.error('6. Err : ' + err);
-    return err;
-});*/
 
-/* NodeJS's exports */
-module.exports = Promise;
+/* test case */
+console.log('### Test Start ###');
+var dummy = { dummy: "dummy" };
+var promise = resolved(dummy).then(function () {
+    console.log('Inside 1st then, promise is', promise)
+    return promise;
+});
+console.log('#### 第一个 then 结束，第二个 then 开始 ####');
+promise.then(null, function (reason) {
+//   assert(reason instanceof TypeError);
+    console.log('Error :', reason);
+    done();
+});
