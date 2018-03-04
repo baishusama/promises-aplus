@@ -77,7 +77,27 @@ var getFin = function () {
         setTimeout(resolve, 900, 'Good Luck!');
     });
 };
-getNameById(0).then(function (name) {
+// Success case
+/*getNameById(0).then(function (name) {
+    console.log('Name : ' + name);
+    return name;
+}, function (err) {
+    console.error('Err : ' + err);
+}).then(function (sth) {
+    console.log('Name again : ' + sth)
+}).then(function (nothing) {
+    console.log('Last `then` return nothing : ' + nothing);
+}).then(
+    getSomethingElse
+).then(function (sth) {
+    console.log('Sth else : ' + sth);
+}).then(
+    getFin
+).then(function (fin) {
+    console.log('Finally : ' + fin);
+});*/
+// Fail case
+getNameById(1).then(function (name) {
     console.log('Name : ' + name);
     return name;
 }, function (err) {
