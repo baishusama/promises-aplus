@@ -54,7 +54,7 @@ function Promise(fn) {
             if (typeof then === 'function') {
                 try {
                     then.call(newValue, resolve, reject);
-                } catch (e){
+                } catch (e) {
                     console.log('Caught an error while state is `' +
                         state +
                         '` then `reject` which :', e);
@@ -140,9 +140,9 @@ var deferred = function () {
  *     - File-2: promises-aplus-tests/lib/tests/helpers/thenable.js "a thenable that fulfills but then throws"
  */
 console.log('### Test Start ###');
-var dummy = { dummy: "dummy" }; // we fulfill or reject with this when we don't intend to test against it
-var sentinel = { sentinel: "sentinel" }; // a sentinel fulfillment value to test for with strict equality
-var other = { other: "other" }; // a value we don't want to be strict equal to
+var dummy = {dummy: "dummy"}; // we fulfill or reject with this when we don't intend to test against it
+var sentinel = {sentinel: "sentinel"}; // a sentinel fulfillment value to test for with strict equality
+var other = {other: "other"}; // a value we don't want to be strict equal to
 
 var yFactory = function () {
     return {
