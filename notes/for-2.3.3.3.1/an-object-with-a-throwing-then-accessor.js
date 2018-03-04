@@ -50,28 +50,22 @@ function Promise(fn) {
         if (newValue
             && (typeof newValue === 'object'
                 || typeof newValue === 'function')) {
-            var then = newValue.then;
+            /**
+             * Note: 根据规范，添加在获取 then 方法的时候 `try-catch`
+             */
+            try {
+                var then = newValue.then;
+            } catch (e) {
+                reject(e);
+            }
             if (typeof then === 'function') {
                 try {
                     then.call(newValue, resolve, reject);
-                } catch (e){
+                } catch (e) {
                     console.log('Caught an error while state is `' +
                         state +
                         '` then `reject` which :', e);
-                    /**
-                     * Note: the line below will not work for `resolve` wrapping in a `setTimeout` in this example
-                     * in which case will throw to `window`, where there is no `catch`
-                     */
-                    // throw(e); // x
-                    /**
-                     * Note: using `this.reject` to call reject is another choice
-                     * but needs line 56 to be `then.call(newValue, resolve.bind(this), reject.bind(this));`
-                     * for `resolve` wrapping in a `setTimeout` if without `bind` its `this` will point to `window`.
-                     * 注意！！Promise/A+ 中规定，onFulfilled 和 onRejected 必须没有 this 值。
-                     * 所以这里的 56 行的代码不能写成上述注释中所提到的，所以这里能且只能是 reject(e) 。
-                     */
-                    // this.reject(e); // x
-                    reject(e); // v
+                    reject(e);
                 }
                 return;
             }
@@ -133,20 +127,26 @@ var deferred = function () {
 };
 
 
-/* test case */
+/**
+ * Test Case
+ *   - Source:
+ *     - File-1: promises-aplus-tests/lib/tests/2.3.3.js
+ *     - File-2: promises-aplus-tests/lib/tests/helpers/thenable.js "an object with a throwing `then` accessor"
+ */
 console.log('### Test Start ###');
-var dummy = { dummy: "dummy" }; // we fulfill or reject with this when we don't intend to test against it
-var sentinel = { sentinel: "sentinel" }; // a sentinel fulfillment value to test for with strict equality
-var other = { other: "other" }; // a value we don't want to be strict equal to
+var dummy = {dummy: "dummy"}; // we fulfill or reject with this when we don't intend to test against it
+var sentinel = {sentinel: "sentinel"}; // a sentinel fulfillment value to test for with strict equality
+var other = {other: "other"}; // a value we don't want to be strict equal to
 
 var yFactory = function () {
-    return {
-        then: function (onFulfilled) {
-            onFulfilled(sentinel);
-            console.log('#### After onFulfilled & Before throw other ####');
-            throw other;
+    return Object.create(null, {
+        then: {
+            get: function () {
+                console.log('#### GET throw sentinel ####');
+                throw sentinel;
+            }
         }
-    };
+    });
 };
 var xFactory = function () {
     return {
@@ -158,7 +158,7 @@ var xFactory = function () {
     };
 };
 var test = function (promise) {
-    promise.then(function onPromiseFulfilled(value) {
+    promise.then(null, function onPromiseRejected(value) {
         console.log('---> Finally, value is', value);
         console.log('---> Does value equals sentinel ? :', value === sentinel);
     });

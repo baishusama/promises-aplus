@@ -49,7 +49,11 @@ function Promise(fn) {
         if (newValue // `newValue && ...` for null
             && (typeof newValue === 'object'
                 || typeof newValue === 'function')) {
-            var then = newValue.then;
+            try {
+                var then = newValue.then;
+            } catch (e) {
+                reject(e);
+            }
             if (typeof then === 'function') {
                 try {
                     then.call(newValue, resolve, reject);
