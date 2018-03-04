@@ -9,23 +9,14 @@ function Promise(fn) {
     this.reject = reject;
 
     this.then = function (onFulfilled, onRejected) {
-        var notPromiseVariable = '测试词法作用域：成功！';
-        /*var anotherIrrelevantPromiseVariable = new Promise(function(resolve, reject){
-          console.log('└─ AnotherIrrelevantPromiseVariable initing..');
-        });*/
-        var that = new Promise(function (resolve, reject) {
-            console.log('├─ Promise initing .. notPromiseVariable is', notPromiseVariable);
-            console.log('├─ Promise initing .. that is', that);
-            console.log('└─ Promise initing .. this is', this);
+        return new Promise(function (resolve, reject) {
             handle({
-                onFulfilled: onFulfilled,
+                onFulfilled: onFulfilled, // TODO: || ???
                 onRejected: onRejected,
                 resolve: resolve.bind(this),
                 reject: reject.bind(this)
             });
         });
-        console.log('After initialization that is', that);
-        return that;
     };
 
     function handle(deferred) {
@@ -45,6 +36,7 @@ function Promise(fn) {
                 ret = cb(value);
                 deferred.resolve(ret); // instead of `pass(ret);` -> Test Case: 2.2.6.js Line 191
             } catch (e) {
+                console.log('try{}catch(e){}, e :', e);
                 deferred.reject(e);
             }
         }, 0);
@@ -53,7 +45,6 @@ function Promise(fn) {
     function resolve(newValue) {
         // Needs to avoid recusive calls on promise
         if (newValue === this) {
-            console.log('---> The value passing into resolve is the current promise !!');
             throw new TypeError('recusive promise');
         }
         if (newValue
@@ -61,27 +52,36 @@ function Promise(fn) {
                 || typeof newValue === 'function')) {
             var then = newValue.then;
             if (typeof then === 'function') {
-                then.call(newValue, resolve, reject);
+                try {
+                    then.call(newValue, resolve, reject);
+                } catch (e){
+                    console.log('Caught an error while state is `' +
+                        state +
+                        '` then `reject` which :', e);
+                    /**
+                     * Note: the line below will not work for `resolve` wrapping in a `setTimeout` in this example
+                     * in which case will throw to `window`, where there is no `catch`
+                     */
+                    // throw(e);
+                    /**
+                     * Note: using `this.reject` to call reject is another choice
+                     * but needs line 56 to be `then.call(newValue, resolve.bind(this), reject.bind(this));`
+                     * for `resolve` wrapping in a `setTimeout` if without `bind` its `this` will point to `window`.
+                     */
+                    // this.reject(e);
+                    reject(e);
+                }
                 return;
             }
         }
         if (state === 'pending') {
             state = "fulfilled";
             value = newValue;
-            afterward(newValue);
+            afterward();
         }
     }
 
     function reject(reason) {
-        /*if (reason
-            && (typeof reason=== 'object'
-                || typeof reason === 'function')) {
-            var then = reason.then;
-            if (typeof then === 'function') {
-                then.call(reason, resolve, reject);
-                return;
-            }
-        }*/
         if (state === 'pending') {
             state = 'rejected';
             value = reason;
@@ -90,17 +90,17 @@ function Promise(fn) {
     }
 
     function afterward() {
+        console.log('After setting `fulfilled` state\n├─ Before afterward `setTimeout`');
         // 包在定时器内部：以避免 fn 同步导致 resolve 在 then 之前
         setTimeout(function () {
+            console.log('└─ Inside afterward `setTimeout`');
             deferreds.forEach(function (deferred) {
                 handle(deferred);
             });
         }, 0);
     }
 
-    // TODO
-    console.log('In constructor, fn init with this :', this);
-    fn.call(this, resolve, reject);
+    fn.call(this, resolve, reject); // about `this` -> Test Case: 2.3.1 -> notes/for-2.3.1
 }
 
 /* adapter functions */
@@ -130,16 +130,39 @@ var deferred = function () {
     };
 };
 
+
 /* test case */
 console.log('### Test Start ###');
-var dummy = {dummy: "dummy"};
-var promise = resolved(dummy).then(function () {
-    console.log('Inside 1st then, promise is', promise)
-    return promise;
+var dummy = { dummy: "dummy" }; // we fulfill or reject with this when we don't intend to test against it
+var sentinel = { sentinel: "sentinel" }; // a sentinel fulfillment value to test for with strict equality
+var other = { other: "other" }; // a value we don't want to be strict equal to
+
+var yFactory = function () {
+    return {
+        then: function (onFulfilled) {
+            onFulfilled(sentinel);
+            console.log('#### After onFulfilled & Before throw other ####');
+            throw other;
+        }
+    };
+};
+var xFactory = function () {
+    return {
+        then: function (resolvePromise) {
+            setTimeout(function () {
+                resolvePromise(yFactory());
+            }, 0);
+        }
+    };
+};
+var test = function (promise) {
+    promise.then(function onPromiseFulfilled(value) {
+        console.log('---> Finally, value is', value);
+        console.log('---> Does value equals sentinel ? :', value === sentinel);
+    });
+};
+
+var promise = resolved(dummy).then(function onBasePromiseFulfilled() {
+    return xFactory();
 });
-console.log('#### 第一个 then 结束，第二个 then 开始 ####');
-promise.then(null, function (reason) {
-//   assert(reason instanceof TypeError);
-    console.log('Error :', reason);
-    done();
-});
+test(promise);

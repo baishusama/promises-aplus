@@ -51,14 +51,18 @@ function Promise(fn) {
                 || typeof newValue === 'function')) {
             var then = newValue.then;
             if (typeof then === 'function') {
-                then.call(newValue, resolve, reject);
+                try {
+                    then.call(newValue, resolve, reject);
+                } catch (e) {
+                    reject(e);
+                }
                 return;
             }
         }
         if (state === 'pending') {
             state = "fulfilled";
             value = newValue;
-            afterward(newValue);
+            afterward();
         }
     }
 
