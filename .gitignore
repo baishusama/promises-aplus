@@ -32,6 +32,7 @@
 npm-debug.log
 testem.log
 /typings
+promises-aplus-tests.log
 
 # e2e
 /e2e/*.js
