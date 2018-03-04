@@ -28,7 +28,7 @@ function Promise(fn) {
             var cb = state === 'fulfilled' ? deferred.onFulfilled : deferred.onRejected,
                 pass = state === 'fulfilled' ? deferred.resolve : deferred.reject,
                 ret;
-            if (!(cb && typeof cb === 'function')) {
+            if (typeof cb !== 'function') {
                 pass(value);
                 return;
             }
@@ -46,7 +46,7 @@ function Promise(fn) {
         if (newValue === this) {
             throw new TypeError('recusive promise');
         }
-        if (newValue
+        if (newValue // `newValue && ...` for null
             && (typeof newValue === 'object'
                 || typeof newValue === 'function')) {
             var then = newValue.then;
