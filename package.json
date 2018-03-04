@@ -4,7 +4,7 @@
   "description": "(under development...)",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "promises-aplus-tests adapters"
   },
   "repository": {
     "type": "git",
