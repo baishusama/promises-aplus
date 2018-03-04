@@ -2,53 +2,89 @@
 function Promise(fn) {
     var state = 'pending';
     var value;
-    var reason;
-    var doneList = [];
-    var failList = [];
+    var deferreds = [];
 
-    this.then = function (done, fail) {
-        switch (state) {
-            case 'pending':
-                doneList.push(done);
-                failList.push(fail);
-                break;
-            case 'fulfilled':
-                done(value);
-                break;
-            case 'rejected':
-                fail(reason);
-                break;
-        }
-        return this; // 返回 promise 对象：以支持链式调用
+    // 暴露接口供 adapters 封装
+    this.resolve = resolve;
+    this.reject = reject;
+
+    this.then = function (onFulfilled, onRejected) {
+        return new Promise(function (resolve, reject) {
+            handle({
+                onFulfilled: onFulfilled, // TODO: || ???
+                onRejected: onRejected,
+                resolve: resolve,
+                reject: reject
+            });
+        });
     };
 
+    function handle(deferred) {
+        if (state === 'pending') {
+            deferreds.push(deferred);
+            return;
+        }
+        var cb = state === 'fulfilled' ? deferred.onFulfilled : deferred.onRejected,
+            pass = state === 'fulfilled' ? deferred.resolve : deferred.reject,
+            ret;
+        if (!(cb && typeof cb === 'function')) {
+            pass(value);
+            return;
+        }
+        try {
+            ret = cb(value);
+            pass(ret); // TODO ???
+        } catch (e) {
+            deferred.reject(e);
+        }
+    }
+
     function resolve(newValue) {
-        // console.log('## In resolve, this is ', this);
-        // 包在定时器内部：以避免 fn 同步导致 resolve 在 then 之前
-        state = "fulfilled";
-        value = newValue;
         setTimeout(function () {
-            for (var i = 0, L = doneList.length; i < L; i++) {
-                var tmp = doneList[i](value);
-                if (tmp instanceof Promise) {
-                    // Another Promise
-                    console.log('...rest `done`s to append to another Promise ', doneList.slice(i + 1));
-                    for (var j = i + 1; j < L; j++) {
-                        tmp.then(doneList[j]);
-                    }
-                    break;
-                } else {
-                    value = tmp; // done.call(null, value);
+            if (newValue
+                && (typeof newValue === 'object'
+                    || typeof newValue === 'function')) {
+                var then = newValue.then;
+                if (typeof then === 'function') {
+                    then.call(newValue, resolve, reject);
+                    return;
                 }
+            }
+            if (state === 'pending') {
+                state = "fulfilled";
+                // value = newValue;
+                afterward(newValue);
             }
         }, 0);
     }
 
-    function reject(err) {
-        state = "rejected";
-        failList.forEach(function (fail) {
-            fail(err);
+    function reject(reason) {
+        /*if (reason
+            && (typeof reason=== 'object'
+                || typeof reason === 'function')) {
+            var then = reason.then;
+            if (typeof then === 'function') {
+                then.call(reason, resolve, reject);
+                return;
+            }
+        }*/
+        setTimeout(function () {
+            if (state === 'pending') {
+                state = 'rejected';
+                // value = reason;
+                afterward(reason);
+            }
+        }, 0);
+    }
+
+    function afterward(v) {
+        value = v;
+        // 包在定时器内部：以避免 fn 同步导致 resolve 在 then 之前
+        // setTimeout(function () {
+        deferreds.forEach(function (deferred) {
+            handle(deferred);
         });
+        // }, 0);
     }
 
     fn(resolve, reject);
@@ -97,24 +133,37 @@ var getFin = function () {
     console.log('Finally : ' + fin);
 });*/
 // Fail case
-getNameById(1).then(function (name) {
+/*getNameById(1).then(function (name) {
     console.log('Name : ' + name);
     return name;
 }, function (err) {
-    console.error('Err : ' + err);
+    console.error('1. Err : ' + err);
+    return err;
 }).then(function (sth) {
     console.log('Name again : ' + sth)
+}, function (err) {
+    console.error('2. Err : ' + err);
+    return err;
 }).then(function (nothing) {
     console.log('Last `then` return nothing : ' + nothing);
+}, function (err) {
+    console.error('3. Err : ' + err);
+    return err;
 }).then(
     getSomethingElse
 ).then(function (sth) {
     console.log('Sth else : ' + sth);
+}, function (err) {
+    console.error('4. Err : ' + err);
+    return err;
 }).then(
     getFin
 ).then(function (fin) {
     console.log('Finally : ' + fin);
-});
+}, function (err) {
+    console.error('6. Err : ' + err);
+    return err;
+});*/
 
 /* NodeJS's exports */
 module.exports = Promise;
