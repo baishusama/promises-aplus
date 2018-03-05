@@ -43,9 +43,9 @@ function Promise(fn) {
     }
 
     function resolve(newValue) {
-        // Needs to avoid recusive calls on promise
+        // Needs to avoid recursive calls on promise
         if (newValue === this) {
-            throw new TypeError('recusive promise');
+            throw new TypeError('recursive promise');
         }
         if (newValue
             && (typeof newValue === 'object'

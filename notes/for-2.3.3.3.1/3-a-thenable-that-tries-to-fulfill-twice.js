@@ -43,9 +43,9 @@ function Promise(fn) {
     }
 
     function resolve(newValue) {
-        // Needs to avoid recusive calls on promise
+        // Needs to avoid recursive calls on promise
         if (newValue === this) {
-            throw new TypeError('recusive promise');
+            throw new TypeError('recursive promise');
         }
         if (newValue
             && (typeof newValue === 'object'
@@ -60,7 +60,25 @@ function Promise(fn) {
             }
             if (typeof then === 'function') {
                 try {
-                    then.call(newValue, resolve, reject);
+                    /**
+                     * Note:
+                     *   - Wrapper resolve&reject in if statement to make sure
+                     * newValue.then's onFulfilled/onRejected
+                     * are called only once;
+                     *   - Adding `isImoPromiseEndState` flag to newValue works
+                     * but is NOT ideal TODO
+                     */
+                    then.call(newValue, function (v) {
+                        if (!newValue.isImoPromiseEndState) {
+                            resolve(v);
+                            newValue.isImoPromiseEndState = true;
+                        }
+                    }, function (e) {
+                        if (!newValue.isImoPromiseEndState) {
+                            reject(e);
+                            newValue.isImoPromiseEndState = true;
+                        }
+                    });
                 } catch (e) {
                     console.log('Caught an error while state is `' +
                         state +
@@ -141,14 +159,17 @@ var other = {other: "other"}; // a value we don't want to be strict equal to
 var yFactory = function () {
     return {
         then: function (onFulfilled) {
-            // TODO: how modify to keep order
+            console.log('=== 1st: in outer then ===');
             onFulfilled({
                 then: function (onFulfilled) {
+                    console.log('=== 2nd: in inner then ===');
                     setTimeout(function () {
+                        console.log('=== 3rd: in yFactory\'s setTimeout ===');
                         onFulfilled(sentinel);
                     }, 0);
                 }
             });
+            console.log('=== 4th: in outer then ===');
             onFulfilled(other);
         }
     };
@@ -157,13 +178,14 @@ var xFactory = function () {
     return {
         then: function (resolvePromise) {
             setTimeout(function () {
+                console.log('--- in xFactory\'s setTimeout ---');
                 resolvePromise(yFactory());
             }, 0);
         }
     };
 };
 var test = function (promise) {
-    promise.then(null, function onPromiseRejected(value) {
+    promise.then(function onPromiseRejected(value) {
         console.log('---> Finally, value is', value);
         console.log('---> Does value equals sentinel ? :', value === sentinel);
     });

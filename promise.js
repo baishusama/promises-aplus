@@ -42,9 +42,9 @@ function Promise(fn) {
     }
 
     function resolve(newValue) {
-        // Needs to avoid recusive calls on promise
+        // Needs to avoid recursive calls on promise
         if (newValue === this) {
-            throw new TypeError('recusive promise');
+            throw new TypeError('recursive promise');
         }
         if (newValue // `newValue && ...` for null
             && (typeof newValue === 'object'
@@ -56,7 +56,17 @@ function Promise(fn) {
             }
             if (typeof then === 'function') {
                 try {
-                    then.call(newValue, resolve, reject);
+                    then.call(newValue, function (v) {
+                        if (!newValue.isImoPromiseEndState) {
+                            resolve(v);
+                            newValue.isImoPromiseEndState = true;
+                        }
+                    }, function (e) {
+                        if (!newValue.isImoPromiseEndState) {
+                            reject(e);
+                            newValue.isImoPromiseEndState = true;
+                        }
+                    });
                 } catch (e) {
                     reject(e);
                 }
