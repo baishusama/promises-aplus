@@ -137,7 +137,9 @@ var deferred = function () {
  * Test Case
  *   - Source:
  *     - File-1: promises-aplus-tests/lib/tests/2.3.3.js
- *     - File-2: promises-aplus-tests/lib/tests/helpers/thenable.js "a thenable that fulfills but then throws"
+ *     - File-2: promises-aplus-tests/lib/tests/helpers/thenable.js
+ *       - "a thenable that fulfills but then throws"
+ *         with value equals sentinel
  */
 console.log('### Test Start ###');
 var dummy = {dummy: "dummy"}; // we fulfill or reject with this when we don't intend to test against it

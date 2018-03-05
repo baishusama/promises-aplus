@@ -68,7 +68,10 @@ function Promise(fn) {
                         }
                     });
                 } catch (e) {
-                    reject(e);
+                    if (!newValue.isImoPromiseEndState) {
+                        reject(e);
+                        newValue.isImoPromiseEndState = true;
+                    }
                 }
                 return;
             }

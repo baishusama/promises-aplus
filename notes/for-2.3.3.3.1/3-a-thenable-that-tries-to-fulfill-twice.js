@@ -50,9 +50,6 @@ function Promise(fn) {
         if (newValue
             && (typeof newValue === 'object'
                 || typeof newValue === 'function')) {
-            /**
-             * Note: 根据规范，添加在获取 then 方法的时候 `try-catch`
-             */
             try {
                 var then = newValue.then;
             } catch (e) {
@@ -149,7 +146,10 @@ var deferred = function () {
  * Test Case
  *   - Source:
  *     - File-1: promises-aplus-tests/lib/tests/2.3.3.js
- *     - File-2: promises-aplus-tests/lib/tests/helpers/thenable.js "a thenable that tries to fulfill twice"
+ *     - File-2: promises-aplus-tests/lib/tests/helpers/thenable.js
+ *       - "a thenable that tries to fulfill twice"
+ *         with value equals "an asynchronously-fulfilled custom thenable"
+ *         with inner value equals sentinel
  */
 console.log('### Test Start ###');
 var dummy = {dummy: "dummy"}; // we fulfill or reject with this when we don't intend to test against it

@@ -50,9 +50,6 @@ function Promise(fn) {
         if (newValue
             && (typeof newValue === 'object'
                 || typeof newValue === 'function')) {
-            /**
-             * Note: 根据规范，在获取 then 方法的时候添加 `try-catch`
-             */
             try {
                 var then = newValue.then;
             } catch (e) {
@@ -60,12 +57,29 @@ function Promise(fn) {
             }
             if (typeof then === 'function') {
                 try {
-                    then.call(newValue, resolve, reject);
+                    then.call(newValue, function (v) {
+                        if (!newValue.isImoPromiseEndState) {
+                            resolve(v);
+                            newValue.isImoPromiseEndState = true;
+                        }
+                    }, function (e) {
+                        if (!newValue.isImoPromiseEndState) {
+                            reject(e);
+                            newValue.isImoPromiseEndState = true;
+                        }
+                    });
                 } catch (e) {
                     console.log('Caught an error while state is `' +
                         state +
                         '` then `reject` which :', e);
-                    reject(e);
+                    /**
+                     * Note: also wrapped in if statement
+                     * to check `isImoPromiseEndState` first before reject
+                     */
+                    if (!newValue.isImoPromiseEndState) {
+                        reject(e);
+                        newValue.isImoPromiseEndState = true;
+                    }
                 }
                 return;
             }
@@ -132,8 +146,9 @@ var deferred = function () {
  *   - Source:
  *     - File-1: promises-aplus-tests/lib/tests/2.3.3.js
  *     - File-2: promises-aplus-tests/lib/tests/helpers/thenable.js
- *       - "an object with a throwing `then` accessor"
- *         with value equals sentinel
+ *       - "a thenable that fulfills but then throws"
+ *         with value equals "an asynchronously-fulfilled custom thenable"
+ *         with inner value equals sentinel
  */
 console.log('### Test Start ###');
 var dummy = {dummy: "dummy"}; // we fulfill or reject with this when we don't intend to test against it
@@ -141,26 +156,35 @@ var sentinel = {sentinel: "sentinel"}; // a sentinel fulfillment value to test f
 var other = {other: "other"}; // a value we don't want to be strict equal to
 
 var yFactory = function () {
-    return Object.create(null, {
-        then: {
-            get: function () {
-                console.log('#### GET throw sentinel ####');
-                throw sentinel;
-            }
+    return {
+        then: function (onFulfilled) {
+            console.log('=== 1st: in outer then ===');
+            onFulfilled({
+                then: function (onFulfilled) {
+                    console.log('=== 2nd: in inner then ===');
+                    setTimeout(function () {
+                        console.log('=== 3rd: in yFactory\'s setTimeout ===');
+                        onFulfilled(sentinel);
+                    }, 0);
+                }
+            });
+            console.log('=== 4th: in outer then ===');
+            throw other;
         }
-    });
+    };
 };
 var xFactory = function () {
     return {
         then: function (resolvePromise) {
             setTimeout(function () {
+                console.log('--- in xFactory\'s setTimeout ---');
                 resolvePromise(yFactory());
             }, 0);
         }
     };
 };
 var test = function (promise) {
-    promise.then(null, function onPromiseRejected(value) {
+    promise.then(function onPromiseRejected(value) {
         console.log('---> Finally, value is', value);
         console.log('---> Does value equals sentinel ? :', value === sentinel);
     });
